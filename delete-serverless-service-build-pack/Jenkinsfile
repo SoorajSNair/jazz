@@ -1045,8 +1045,16 @@ def loadServiceInfo() {
 	def token = setCredentials()
 	def url = "$g_base_url/platform/services?domain=$domain&service=$service&isAdmin=true"
 	def curlOutput = sh (script: "curl -H \"Content-Type: application/json\" \
-			-H \"Authorization: $token\" \"$url\" | $jq -r '.data[0] | [.created_by] | join(\",\")'", returnStdout: true)
-	def values = curlOutput.split(',')
+			-H \"Authorization: $token\" \"$url\"", returnStdout: true)
+	echo "before parsed : $curlOutput"
+	def jsonParser = new groovy.json.JsonSlurper()
+	def resultJson = jsonParser.parseText(curlOutput)
+	echo "after parsed: $resultJson"
+	def createby = ''
+	if(resultJson != null && resultJson.data != null && resultJson.data.available != null) {
+			createby = resultJson.data[0].created_by
+		} 
+	def values = createby.split(',')
 
 	echo "Services : $values"
 
@@ -1074,8 +1082,13 @@ def loadServiceInfo() {
 			def token = sh (script: "curl --silent -X POST -k -v \
 				-H \"Content-Type: application/json\" \
 				 $url \
-				-d \'${payload}\' | $jq -r '.data.token'", returnStdout:true)
-			token = token.replaceAll("[\n\r]", "")
+				-d \'${payload}\'", returnStdout:true)
+			echo "Token before : $token"	
+			def jsonParser = new groovy.json.JsonSlurper()
+			def resultJson = jsonParser.parseText(token)
+			echo "Token After : $resultJson"
+			
+			token = resultJson.data.token.replaceAll("[\n\r]", "")
 			return token
 		}
 		catch(e){
